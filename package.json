@@ -1,0 +1,33 @@
+{
+  "name": "express-http2-example",
+  "version": "0.0.1",
+  "description": "",
+  "main": "app/index.js",
+  "scripts": {
+    "build": "babel --presets latest -d app app/src",
+    "prestart": "npm run build",
+    "start": "node app/index.js",
+    "dev": "babel-node --debug --presets latest -- app/src/index.js --debug",
+    "test": "mocha --compilers js:babel-core/register test/**/*.js"
+  },
+  "keywords": [],
+  "author": "kazu69",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.14.0",
+    "file-stream-rotator": "0.0.7",
+    "mime-types": "^2.1.12",
+    "morgan": "^1.7.0",
+    "spdy": "^3.4.0"
+  },
+  "devDependencies": {
+    "babel": "^6.5.2",
+    "babel-cli": "^6.14.0",
+    "babel-core": "^6.14.0",
+    "babel-preset-latest": "^6.16.0",
+    "babel-register": "^6.14.0",
+    "mocha": "^3.0.2",
+    "should": "^11.1.0",
+    "supertest": "^2.0.0"
+  }
+}
