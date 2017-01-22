@@ -36,8 +36,6 @@ if(app.get('env') === 'production') {
 }
 
 app.use('/', routes);
-app.use(express.static('app/views'));
-app.use(express.static('app/public'));
 
 spdy.createServer(options, app)
     .listen(port, (error) => {

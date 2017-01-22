@@ -59,8 +59,6 @@ if (app.get('env') === 'production') {
 }
 
 app.use('/', _index2.default);
-app.use(_express2.default.static('app/views'));
-app.use(_express2.default.static('app/public'));
 
 _spdy2.default.createServer(options, app).listen(port, function (error) {
     if (error) {

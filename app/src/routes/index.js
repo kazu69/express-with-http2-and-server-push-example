@@ -8,7 +8,7 @@ const router = express.Router();
 // when index.js execute app/index.js
 const appDir = path.join(__dirname, '/..');
 const viewPath = path.join(appDir, '/views');
-const publicPath = '/';
+const publicPath = path.join(appDir, '/public');;
 
 const stremOption = {
         method: 'GET',
@@ -122,11 +122,11 @@ router.get('/push', function (req, res, next) {
         pushFiles.forEach(file => {
             const option = Object.assign(stremOption, {'response': {'content-type': file.mime}});
             // create push stream
-            const stream = res.push(`${file.path}`, option);
+            const stream = res.push(file.path, option);
             stream.on('error', error => {
                 console.error(error);
             });
-            stream.end();
+            stream.end(fs.readFileSync(`${publicPath}${file.path}`));
         });
         next();
     })

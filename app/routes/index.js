@@ -23,7 +23,7 @@ var router = _express2.default.Router();
 // when index.js execute app/index.js
 var appDir = _path2.default.join(__dirname, '/..');
 var viewPath = _path2.default.join(appDir, '/views');
-var publicPath = '/';
+var publicPath = _path2.default.join(appDir, '/public');;
 
 var stremOption = {
     method: 'GET',
@@ -124,11 +124,11 @@ router.get('/push', function (req, res, next) {
         pushFiles.forEach(function (file) {
             var option = Object.assign(stremOption, { 'response': { 'content-type': file.mime } });
             // create push stream
-            var stream = res.push('' + file.path, option);
+            var stream = res.push(file.path, option);
             stream.on('error', function (error) {
                 console.error(error);
             });
-            stream.end();
+            stream.end(_fs2.default.readFileSync('' + publicPath + file.path));
         });
         next();
     });
