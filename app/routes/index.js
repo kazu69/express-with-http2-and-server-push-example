@@ -106,16 +106,6 @@ var createResourcefileMap = function createResourcefileMap(viewFileDir) {
             })).then(resolve(result));
         });
     });
-
-    // fs.readdir(viewFileDir, (error, file) => {
-    //     file.forEach(fileName => {
-    //         const list = [];
-    //         const viewfilePath = `${viewFileDir}/${fileName}`;
-    //         const option = { encoding: 'utf8' };
-    //         result[`${viewPath}/${fileName}`] = resourceFileList(viewfilePath, option);
-    //     });
-    // });
-    // return result;
 };
 
 // using server push middlewear
@@ -134,12 +124,11 @@ router.get('/push', function (req, res, next) {
         pushFiles.forEach(function (file) {
             var option = Object.assign(stremOption, { 'response': { 'content-type': file.mime } });
             // create push stream
-            console.log('' + file.path);
-            console.log(option);
             var stream = res.push('' + file.path, option);
             stream.on('error', function (error) {
                 console.error(error);
             });
+            stream.end();
         });
         next();
     });

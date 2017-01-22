@@ -126,6 +126,7 @@ router.get('/push', function (req, res, next) {
             stream.on('error', error => {
                 console.error(error);
             });
+            stream.end();
         });
         next();
     })
