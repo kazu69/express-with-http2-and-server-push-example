@@ -1,4 +1,4 @@
-FROM kazu69/node:6.3.0
+FROM kazu69/node:7.2.0
 
 EXPOSE 3000
 
@@ -8,6 +8,6 @@ ADD . /var/www
 
 WORKDIR /var/www
 
-RUN npm i
+RUN yarn
 
-CMD ["npm", "start"]
+CMD ["yarn", "start"]

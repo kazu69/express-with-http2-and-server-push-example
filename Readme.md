@@ -15,7 +15,7 @@ brew install curl --with-nghttp2
 
 ```sh
 docker build -t express-server .
-docker run -t express-server .
+docker run -tid -p 3000:3000 express-server
 
 # check http2 response
 
