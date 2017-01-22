@@ -8,11 +8,9 @@ const router = express.Router();
 // when index.js execute app/index.js
 const appDir = path.join(__dirname, '/..');
 const viewPath = path.join(appDir, '/views');
-const publicPath = path.join(appDir, '/public');
-const jsPath = path.join(appDir, '/public/js');
+const publicPath = '/';
 
 const stremOption = {
-        status: 200,
         method: 'GET',
         request: {
             accept: '*/*'
@@ -22,20 +20,60 @@ const stremOption = {
         }
     }
 
+const resourceScript = (line) => {
+    if(/<script/.test(line) && /src=/.test(line)) {
+        return line.match(/src="([^"]*)"/)[1];
+    }
+
+    return false;
+}
+
+const resourceStyleseet = (line) => {
+    if(/<link/.test(line) && /stylesheet/.test(line) && /href=/.test(line)) {
+        return line.match(/href="([^"]*)"/)[1];
+    }
+
+    return false;
+}
+
+const resourceImage = (line) => {
+    if(/<img/.test(line) && /src=/.test(line)) {
+        return line.match(/src="([^"]*)"/)[1];
+    }
+
+    return false;
+}
+
 const resourceFileList = (filePath, option) => {
-    const result = [];
-    const regExp = /src=["|'](.*)["|']/;
+    let result = [];
+    const regFile = /\/.*?([\/\w\.]+)[\s\?]?.*/;
+    const regExt = /\.(.*)/;
+
     fs.readFileSync(filePath, option)
     .split(/\n/)
-    .filter(line => line.search(regExp) !== -1)
-    .forEach(line => {
-        const resourceFile = line.match(regExp)[1];
-        const length = resourceFile.split(/\./).length;
-        const fileExtention = resourceFile.split(/\./)[length - 1];
-        
+    .filter(line => {
+        let file;
+        if(resourceScript(line)) {
+            file = resourceScript(line)
+        }
+
+        else if(resourceStyleseet(line)) {
+            file = resourceStyleseet(line)
+        }
+
+        else if(resourceImage(line)) {
+            file = resourceImage(line)
+        }
+
+        else {
+            return false;
+        }
+
+        const fileExtention = file.split(regExt)[1];
+
         result.push(
             {
-                path: resourceFile,
+                path: file,
                 mime: mime.lookup(fileExtention)
             }
         );
@@ -47,19 +85,25 @@ const resourceFileList = (filePath, option) => {
 const createResourcefileMap = viewFileDir => {
     let result = {}
 
-    fs.readdir(viewFileDir, (error, file) => {
-        file.forEach(fileName => {
-            const list = [];
-            const viewfilePath = `${viewFileDir}/${fileName}`;
-            const option = { encoding: 'utf8' };
-            result[`${viewPath}/${fileName}`] = resourceFileList(viewfilePath, option);
+    return new Promise((resolve, reject) => {
+        fs.readdir(viewFileDir, (error, file) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            Promise.all(
+                file.map(fileName => {
+                    const list = [];
+                    const viewfilePath = `${viewFileDir}/${fileName}`;
+                    const option = { encoding: 'utf8' };
+                    result[`${viewPath}/${fileName}`] = resourceFileList(viewfilePath, option);
+                    return result;
+                })
+            ).then(resolve(result))
         });
     });
-
-    return result;
 }
-
-const resorceFileMap = createResourcefileMap(viewPath);
 
 // using server push middlewear
 router.get('/push', function (req, res, next) {
@@ -71,26 +115,30 @@ router.get('/push', function (req, res, next) {
     //          }
     //      ]
     //  }
-    const pushFiles = resorceFileMap[`${viewPath}/index.html`];
-    pushFiles.forEach( file => {
-        const option = Object.assign(stremOption, {'response': {'content-type': file.mime}});
-        // create push stream
-        const stream = res.push(`${publicPath}${file.path}`, option);
-        stream.on('error', error => {
-            console.error(error);
+    createResourcefileMap(viewPath + req.url)
+    .then((resorceFileMap) => {
+        const pushFiles = resorceFileMap[`${viewPath}/index.html`];
+
+        pushFiles.forEach(file => {
+            const option = Object.assign(stremOption, {'response': {'content-type': file.mime}});
+            // create push stream
+            const stream = res.push(`${file.path}`, option);
+            stream.on('error', error => {
+                console.error(error);
+            });
         });
-        stream.end();
-    });
-    next();
+        next();
+    })
 });
 
 router.get('/', (req, res) => {
-    res.sendFile(`${viewPath}/index.html`);
+    const html = fs.readFileSync(`${viewPath}/index.html`);
+    res.end(html);
 });
 
 // server send files (server push)
 router.get('/push', (req, res) => {
-    const html = fs.readFileSync(`${viewPath}/index.html`);
+    const html = fs.readFileSync(`${viewPath}/push/index.html`);
     res.end(html);
 });
 

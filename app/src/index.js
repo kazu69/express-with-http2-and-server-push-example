@@ -26,10 +26,6 @@ const accessLogOption = {
     verbose: false
 };
 
-app.use(express.static('app/views'));
-app.use(express.static('app/public'));
-app.use('/', routes);
-
 fs.existsSync(logDir) || fs.mkdirSync(logDir);
 if(app.get('env') === 'production') {
     const accessLogStream = FileStreamRotator.getStream(accessLogOption);
@@ -38,6 +34,10 @@ if(app.get('env') === 'production') {
     app.use(morgan({ format: 'dev', date: 'clf', immediate: true }));
     app.use(morgan({ format: 'common' }));
 }
+
+app.use('/', routes);
+app.use(express.static('app/views'));
+app.use(express.static('app/public'));
 
 spdy.createServer(options, app)
     .listen(port, (error) => {

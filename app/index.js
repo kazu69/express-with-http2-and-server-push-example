@@ -49,10 +49,6 @@ var accessLogOption = {
     verbose: false
 };
 
-app.use(_express2.default.static('app/views'));
-app.use(_express2.default.static('app/public'));
-app.use('/', _index2.default);
-
 _fs2.default.existsSync(logDir) || _fs2.default.mkdirSync(logDir);
 if (app.get('env') === 'production') {
     var accessLogStream = _fileStreamRotator2.default.getStream(accessLogOption);
@@ -61,6 +57,10 @@ if (app.get('env') === 'production') {
     app.use((0, _morgan2.default)({ format: 'dev', date: 'clf', immediate: true }));
     app.use((0, _morgan2.default)({ format: 'common' }));
 }
+
+app.use('/', _index2.default);
+app.use(_express2.default.static('app/views'));
+app.use(_express2.default.static('app/public'));
 
 _spdy2.default.createServer(options, app).listen(port, function (error) {
     if (error) {

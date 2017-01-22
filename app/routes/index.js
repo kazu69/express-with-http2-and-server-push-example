@@ -23,11 +23,9 @@ var router = _express2.default.Router();
 // when index.js execute app/index.js
 var appDir = _path2.default.join(__dirname, '/..');
 var viewPath = _path2.default.join(appDir, '/views');
-var publicPath = _path2.default.join(appDir, '/public');
-var jsPath = _path2.default.join(appDir, '/public/js');
+var publicPath = '/';
 
 var stremOption = {
-    status: 200,
     method: 'GET',
     request: {
         accept: '*/*'
@@ -37,18 +35,51 @@ var stremOption = {
     }
 };
 
+var resourceScript = function resourceScript(line) {
+    if (/<script/.test(line) && /src=/.test(line)) {
+        return line.match(/src="([^"]*)"/)[1];
+    }
+
+    return false;
+};
+
+var resourceStyleseet = function resourceStyleseet(line) {
+    if (/<link/.test(line) && /stylesheet/.test(line) && /href=/.test(line)) {
+        return line.match(/href="([^"]*)"/)[1];
+    }
+
+    return false;
+};
+
+var resourceImage = function resourceImage(line) {
+    if (/<img/.test(line) && /src=/.test(line)) {
+        return line.match(/src="([^"]*)"/)[1];
+    }
+
+    return false;
+};
+
 var resourceFileList = function resourceFileList(filePath, option) {
     var result = [];
-    var regExp = /src=["|'](.*)["|']/;
+    var regFile = /\/.*?([\/\w\.]+)[\s\?]?.*/;
+    var regExt = /\.(.*)/;
+
     _fs2.default.readFileSync(filePath, option).split(/\n/).filter(function (line) {
-        return line.search(regExp) !== -1;
-    }).forEach(function (line) {
-        var resourceFile = line.match(regExp)[1];
-        var length = resourceFile.split(/\./).length;
-        var fileExtention = resourceFile.split(/\./)[length - 1];
+        var file = void 0;
+        if (resourceScript(line)) {
+            file = resourceScript(line);
+        } else if (resourceStyleseet(line)) {
+            file = resourceStyleseet(line);
+        } else if (resourceImage(line)) {
+            file = resourceImage(line);
+        } else {
+            return false;
+        }
+
+        var fileExtention = file.split(regExt)[1];
 
         result.push({
-            path: resourceFile,
+            path: file,
             mime: _mimeTypes2.default.lookup(fileExtention)
         });
     });
@@ -59,19 +90,33 @@ var resourceFileList = function resourceFileList(filePath, option) {
 var createResourcefileMap = function createResourcefileMap(viewFileDir) {
     var result = {};
 
-    _fs2.default.readdir(viewFileDir, function (error, file) {
-        file.forEach(function (fileName) {
-            var list = [];
-            var viewfilePath = viewFileDir + '/' + fileName;
-            var option = { encoding: 'utf8' };
-            result[viewPath + '/' + fileName] = resourceFileList(viewfilePath, option);
+    return new Promise(function (resolve, reject) {
+        _fs2.default.readdir(viewFileDir, function (error, file) {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            Promise.all(file.map(function (fileName) {
+                var list = [];
+                var viewfilePath = viewFileDir + '/' + fileName;
+                var option = { encoding: 'utf8' };
+                result[viewPath + '/' + fileName] = resourceFileList(viewfilePath, option);
+                return result;
+            })).then(resolve(result));
         });
     });
 
-    return result;
+    // fs.readdir(viewFileDir, (error, file) => {
+    //     file.forEach(fileName => {
+    //         const list = [];
+    //         const viewfilePath = `${viewFileDir}/${fileName}`;
+    //         const option = { encoding: 'utf8' };
+    //         result[`${viewPath}/${fileName}`] = resourceFileList(viewfilePath, option);
+    //     });
+    // });
+    // return result;
 };
-
-var resorceFileMap = createResourcefileMap(viewPath);
 
 // using server push middlewear
 router.get('/push', function (req, res, next) {
@@ -83,26 +128,31 @@ router.get('/push', function (req, res, next) {
     //          }
     //      ]
     //  }
-    var pushFiles = resorceFileMap[viewPath + '/index.html'];
-    pushFiles.forEach(function (file) {
-        var option = Object.assign(stremOption, { 'response': { 'content-type': file.mime } });
-        // create push stream
-        var stream = res.push('' + publicPath + file.path, option);
-        stream.on('error', function (error) {
-            console.error(error);
+    createResourcefileMap(viewPath + req.url).then(function (resorceFileMap) {
+        var pushFiles = resorceFileMap[viewPath + '/index.html'];
+
+        pushFiles.forEach(function (file) {
+            var option = Object.assign(stremOption, { 'response': { 'content-type': file.mime } });
+            // create push stream
+            console.log('' + file.path);
+            console.log(option);
+            var stream = res.push('' + file.path, option);
+            stream.on('error', function (error) {
+                console.error(error);
+            });
         });
-        stream.end();
+        next();
     });
-    next();
 });
 
 router.get('/', function (req, res) {
-    res.sendFile(viewPath + '/index.html');
+    var html = _fs2.default.readFileSync(viewPath + '/index.html');
+    res.end(html);
 });
 
 // server send files (server push)
 router.get('/push', function (req, res) {
-    var html = _fs2.default.readFileSync(viewPath + '/index.html');
+    var html = _fs2.default.readFileSync(viewPath + '/push/index.html');
     res.end(html);
 });
 
